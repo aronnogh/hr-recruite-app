@@ -8,13 +8,18 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 import dbConnect from '@/lib/mongoose';
 import JobDescription from '@/models/JobDescription';
 
-export async function createJobDescription(formData) {
+// *** THIS IS THE FIX ***
+// The server action must accept two arguments when used with useActionState:
+// 1. The previous state of the form.
+// 2. The form's data.
+export async function createJobDescription(previousState, formData) {
   const session = await getServerSession(authOptions);
 
   if (!session || session.user.role !== 'hr') {
     return { error: 'Unauthorized' };
   }
 
+  // The rest of the function logic remains exactly the same.
   const title = formData.get('title');
   const description = formData.get('description');
   const file = formData.get('jdFile');
@@ -32,7 +37,6 @@ export async function createJobDescription(formData) {
     }
     const blob = await put(file.name, file, { access: 'public' });
     fileUrl = blob.url;
-    // In a real app, you would parse the PDF text here and set descriptionText
     descriptionText = descriptionText || `Details are in the uploaded PDF: ${file.name}`;
   }
   
@@ -46,12 +50,11 @@ export async function createJobDescription(formData) {
       uploadedFileUrl: fileUrl,
     });
 
-    // We set the publicUrl after saving to get the document's ID
     newJd.publicUrl = `/jd/${newJd._id.toHexString()}`;
     
     await newJd.save();
 
-    revalidatePath('/hr/dashboard'); // Refresh the dashboard to show the new JD
+    revalidatePath('/hr/dashboard');
     return { success: true, message: 'Job Description created successfully.' };
 
   } catch (e) {

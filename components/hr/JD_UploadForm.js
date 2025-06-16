@@ -1,10 +1,12 @@
 // components/hr/JD_UploadForm.js
 "use client";
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useRef, useEffect } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createJobDescription } from '@/app/actions/jobActions';
-import { useRef, useEffect } from 'react';
+import RichTextEditor from '../ui/RichTextEditor'; // <-- IMPORT THE NEW COMPONENT
 
+// ... (SubmitButton component is unchanged) ...
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -13,18 +15,21 @@ function SubmitButton() {
       disabled={pending}
       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500"
     >
-      {pending ? 'Saving...' : 'Save Job Description'}
+      {/* The text changes based on the pending state */}
+      {pending ? 'Saving...' : 'Save Job Description'} 
     </button>
   );
 }
 
 export default function JD_UploadForm() {
-  const [state, formAction] = useFormState(createJobDescription, null);
+  const [state, formAction] = useActionState(createJobDescription, null);
   const formRef = useRef(null);
   
   useEffect(() => {
     if (state?.success) {
         formRef.current?.reset();
+        // We might need to manually reset the editor as well if it holds state
+        // For now, form reset is a good start
     }
   }, [state]);
 
@@ -36,10 +41,14 @@ export default function JD_UploadForm() {
           <label htmlFor="title" className="block text-sm font-medium text-gray-300">Job Title</label>
           <input type="text" name="title" id="title" required className="mt-1 block w-full bg-gray-900 border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
         </div>
+        
+        {/* --- THIS IS THE CHANGE --- */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-300">Description (Paste Text)</label>
-          <textarea id="description" name="description" rows="8" className="mt-1 block w-full bg-gray-900 border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">Description (Paste or Write)</label>
+          <RichTextEditor name="description" />
         </div>
+        {/* --- END OF CHANGE --- */}
+
         <div className="text-center my-2 text-gray-400">OR</div>
         <div>
           <label htmlFor="jdFile" className="block text-sm font-medium text-gray-300">Upload PDF</label>

@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongoose";
 import JobDescription from "@/models/JobDescription";
 import { notFound } from "next/navigation";
 import Link from 'next/link';
+import DOMPurify from 'isomorphic-dompurify';
 
 async function getJobDescription(id) {
     try {
@@ -21,8 +22,12 @@ export default async function PublicJdPage({ params }) {
     const jd = await getJobDescription(params.id);
 
     if (!jd) {
-        notFound(); // Renders the not-found.js file or a default 404 page
+        notFound();
     }
+
+    // Sanitize the HTML content before rendering it.
+    // This is a CRITICAL security step to prevent XSS attacks.
+    const sanitizedDescription = DOMPurify.sanitize(jd.descriptionText);
 
     return (
         <div className="max-w-4xl mx-auto p-8 bg-gray-800 rounded-lg shadow-lg">
@@ -31,9 +36,14 @@ export default async function PublicJdPage({ params }) {
                 Posted on {new Date(jd.createdAt).toLocaleDateString()}
             </p>
             
-            <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
-                {jd.descriptionText}
-            </div>
+            {/* 
+              Use `dangerouslySetInnerHTML` to render the sanitized HTML.
+              The `prose` classes from Tailwind will style the rendered HTML beautifully.
+            */}
+            <div 
+              className="prose prose-invert max-w-none text-gray-300"
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }} 
+            />
 
             {jd.uploadedFileUrl && (
                 <div className="mt-8">

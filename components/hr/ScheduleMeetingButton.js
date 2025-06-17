@@ -25,12 +25,13 @@ export default function ScheduleMeetingButton({ applicationId, hrId }) {
     };
 
     return (
-        <button 
-            onClick={handleSendInvite} 
+        // Using md-filled-tonal-button for a distinct action, or md-filled-button for a primary action
+        <md-filled-tonal-button
+            onClick={handleSendInvite}
             disabled={isPending}
-            className="px-3 py-1 text-sm font-semibold rounded-full bg-green-600 hover:bg-green-500 text-white disabled:opacity-50"
+            className="md-typescale-label-large w-full sm:w-auto" // Material You typography and responsive width
         >
-            {isPending ? 'Sending...' : 'Send Invite'}
-        </button>
+            {isPending ? 'Sending...' : 'Schedule Meeting'}
+        </md-filled-tonal-button>
     );
 }

@@ -4,7 +4,7 @@
 import { useActionState, useRef, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createJobDescription } from '@/app/actions/jobActions';
-import RichTextEditor from '../ui/RichTextEditor';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 
 // Import the specific React Icon you want to use
 import { FaFileUpload } from 'react-icons/fa'; // Example: Font Awesome File Upload icon

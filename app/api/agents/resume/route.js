@@ -2,13 +2,13 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-// --- FIX 1: Import the correctly named function ---
 import { processFileWithUserKey } from "@/utils/gemini";
 import dbConnect from "@/lib/mongoose";
 import Resume from "@/models/Resume";
 import AgentLog from "@/models/AgentLog";
-import JobDescription from "@/models/JobDescription"; // <-- Import JD model
-import User from "@/models/User"; // <-- Import User model
+import JobDescription from "@/models/JobDescription";
+import User from "@/models/User";
+import { put } from '@vercel/blob'; // Import `put` for file uploads
 
 export async function POST(req) {
   const session = await getServerSession(authOptions);
@@ -18,14 +18,13 @@ export async function POST(req) {
 
   const formData = await req.formData();
   const resumeFile = formData.get('resume');
-  // --- FIX 2: Get the jdId which the frontend will now send ---
   const jdId = formData.get('jdId');
 
   if (!resumeFile || !jdId) {
     return NextResponse.json({ error: 'Resume file and Job ID are required.' }, { status: 400 });
   }
 
-  // This prompt remains the same
+  // This is the advanced prompt for the Resume Analyzer
   const resumeAnalysisPrompt = `
     First, fully extract all text content from the provided document.
     Then, analyze the extracted text and return ONLY a single JSON object.
@@ -42,7 +41,7 @@ export async function POST(req) {
   try {
     await dbConnect();
     
-    // --- FIX 3: Fetch the HR user's API key based on the JD ---
+    // Fetch the HR user's API key based on the Job Description
     const jd = await JobDescription.findById(jdId);
     if (!jd) throw new Error("The specified job description does not exist.");
 
@@ -51,22 +50,32 @@ export async function POST(req) {
         throw new Error("The recruiter for this job has not configured their AI API key.");
     }
     const apiKey = hrUser.geminiApiKey;
+    
+    // --- FILE UPLOAD LOGIC ---
+    // Upload the resume to Vercel Blob to get a permanent, public URL
+    const blob = await put(resumeFile.name, resumeFile, {
+        access: 'public',
+        addRandomSuffix: true, // Guarantees a unique filename to prevent overwrites
+    });
+    // --- END OF FILE UPLOAD LOGIC ---
 
-    // --- FIX 4: Call the correct function with the API key ---
+    // Process the file with Gemini for AI analysis
     const { structuredOutput } = await processFileWithUserKey(resumeFile, resumeAnalysisPrompt, apiKey);
 
     if (!structuredOutput || !structuredOutput.fullText) {
       throw new Error("Failed to get structured output or full text from AI.");
     }
     
+    // Save the new Resume document with the REAL file URL from Vercel Blob
     const newResume = new Resume({
       applieId: session.user.id,
-      fileUrl: "TBD", // You would still upload to Vercel Blob and save the URL here
+      fileUrl: blob.url, // Use the actual URL from the upload
       parsedText: structuredOutput.fullText,
       analysisResult: structuredOutput,
     });
     await newResume.save();
 
+    // Log the agent interaction
     await AgentLog.create({
         userId: session.user.id,
         agentType: 'RESUME_PARSER',
@@ -78,7 +87,7 @@ export async function POST(req) {
     return NextResponse.json({ 
         success: true, 
         message: 'Resume analyzed successfully.',
-        resumeId: newResume._id,
+        resumeId: newResume._id.toString(), // Send back the new resume ID as a string
         analysis: structuredOutput,
     }, { status: 200 });
 

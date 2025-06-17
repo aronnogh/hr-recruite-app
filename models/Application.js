@@ -5,15 +5,18 @@ const ApplicationSchema = new mongoose.Schema({
   jdId: { type: mongoose.Schema.Types.ObjectId, ref: 'JobDescription', required: true },
   resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume', required: true },
   applieId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  matchScore: Number,
-  matchedSkills: [String],
+  
+  // --- THIS IS THE NEW, FLATTENED SCHEMA ---
+  matchScore: { type: Number, default: 0 },
+  feedbackForCandidate: { type: String, default: '' },
+  matchedSkills: { type: [String], default: [] }, // An array of strings
+  missingSkills: { type: [String], default: [] }, // An array of strings
+  // The 'aiAnalysis' object is now removed.
+  
   generatedCoverLetter: String,
   status: {
     type: String,
-    // --- THIS IS THE FIX ---
-    // Add 'interview-scheduled' to the list of allowed values.
     enum: ['submitted', 'in-review', 'shortlisted', 'rejected', 'interview-scheduled'],
-    // --- END OF FIX ---
     default: 'submitted'
   },
   submittedAt: { type: Date, default: Date.now },

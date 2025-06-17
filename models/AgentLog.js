@@ -10,8 +10,15 @@ const AgentLogSchema = new mongoose.Schema({
   agentType: { 
     type: String, 
     required: true, 
-    // Example agent types you might use
-    enum: ['RESUME_PARSER', 'COVER_LETTER_GENERATOR', 'SKILL_MATCHER'] 
+    // --- THIS IS THE FIX ---
+    // Add the new versioned agent type to the list of allowed values.
+    enum: [
+        'RESUME_PARSER', 
+        'COVER_LETTER_GENERATOR', 
+        'SKILL_MATCHER',
+        'SKILL_MATCHER_V2' // The new, high-accuracy matcher
+    ] 
+    // --- END OF FIX ---
   },
   fileName: String, // Optional: The name of the file being processed
   rawInput: { 

@@ -8,10 +8,7 @@ import { authOptions } from "../api/auth/[...nextauth]/route";
 import dbConnect from '@/lib/mongoose';
 import JobDescription from '@/models/JobDescription';
 
-// *** THIS IS THE FIX ***
-// The server action must accept two arguments when used with useActionState:
-// 1. The previous state of the form.
-// 2. The form's data.
+// The server action must accept two arguments when used with useActionState
 export async function createJobDescription(previousState, formData) {
   const session = await getServerSession(authOptions);
 
@@ -19,7 +16,6 @@ export async function createJobDescription(previousState, formData) {
     return { error: 'Unauthorized' };
   }
 
-  // The rest of the function logic remains exactly the same.
   const title = formData.get('title');
   const description = formData.get('description');
   const file = formData.get('jdFile');
@@ -35,8 +31,19 @@ export async function createJobDescription(previousState, formData) {
     if (file.type !== 'application/pdf') {
         return { error: 'Only PDF files are allowed.' };
     }
-    const blob = await put(file.name, file, { access: 'public' });
+    
+    // --- THIS IS THE FIX ---
+    // Add `addRandomSuffix: true` to the options object.
+    // This will automatically append a random suffix to the filename,
+    // ensuring it is unique and preventing overwrite errors.
+    const blob = await put(file.name, file, {
+        access: 'public',
+        addRandomSuffix: true,
+    });
+    // --- END OF FIX ---
+
     fileUrl = blob.url;
+    // In a real app, you would parse the PDF text here and set descriptionText
     descriptionText = descriptionText || `Details are in the uploaded PDF: ${file.name}`;
   }
   
@@ -50,11 +57,12 @@ export async function createJobDescription(previousState, formData) {
       uploadedFileUrl: fileUrl,
     });
 
+    // We set the publicUrl after saving to get the document's ID
     newJd.publicUrl = `/jd/${newJd._id.toHexString()}`;
     
     await newJd.save();
 
-    revalidatePath('/hr/dashboard');
+    revalidatePath('/hr/dashboard'); // Refresh the dashboard to show the new JD
     return { success: true, message: 'Job Description created successfully.' };
 
   } catch (e) {

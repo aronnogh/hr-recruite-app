@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import DOMPurify from 'isomorphic-dompurify';
+import PdfViewer from '@/components/ui/PdfViewer'; // Import the PDF viewer component
 
 export default function PublicJdPage() {
     const { data: session, status: sessionStatus } = useSession();
@@ -29,7 +30,6 @@ export default function PublicJdPage() {
             try {
                 const response = await fetch(`/api/jds/${params.id}`);
                 if (!response.ok) {
-                    // This handles cases where the ID is valid but not found in DB
                     throw new Error("Job Description not found");
                 }
                 const data = await response.json();
@@ -70,7 +70,7 @@ export default function PublicJdPage() {
             setFlowStatus('Step 1/3: Analyzing your resume...');
             const resumeFormData = new FormData();
             resumeFormData.append('resume', file);
-            // This is crucial for the multi-tenant backend to find the correct HR's API key
+            // This is crucial for the multi-tenant backend to find the correct HR's API key.
             resumeFormData.append('jdId', jd.id);
             
             const resumeRes = await fetch('/api/agents/resume', { method: 'POST', body: resumeFormData });
@@ -160,8 +160,24 @@ export default function PublicJdPage() {
                 {applicationResult && (
                     <div className="my-6 p-6 bg-green-900/50 border border-green-700 rounded-lg">
                         <h3 className="text-2xl font-bold text-green-300">Application Submitted!</h3>
-                        <p className="mt-2 text-gray-300">Match Score: <span className="font-bold text-xl">{applicationResult.matchScore}%</span></p>
-                        {applicationResult.matchScore >= 80 && <p className="text-sm text-green-400">Great news! You seem like a strong match and have been shortlisted.</p>}
+                        
+                        {/* THE FIX FOR DISPLAYING THE SCORE CORRECTLY */}
+                        <p className="mt-2 text-gray-300">
+                            Match Score: 
+                            <span className="font-bold text-xl ml-2">
+                                {applicationResult.finalScore?.totalScore || 'N/A'}%
+                            </span>
+                        </p>
+                        
+                        {/* Display the AI's reasoning for the score */}
+                        <p className="mt-2 text-sm text-gray-400">{applicationResult.finalScore?.reasoning}</p>
+
+                        {applicationResult.finalScore?.totalScore >= 80 && 
+                            <p className="text-sm text-green-400 mt-2">
+                                Great news! You seem like a strong match and have been shortlisted.
+                            </p>
+                        }
+                        
                          <details className="mt-4">
                             <summary className="cursor-pointer text-blue-400 hover:underline">View Your Generated Cover Letter</summary>
                             <p className="mt-2 p-4 bg-gray-900 rounded whitespace-pre-wrap">{applicationResult.generatedCoverLetter}</p>
@@ -173,10 +189,18 @@ export default function PublicJdPage() {
                 <hr className="my-8 border-gray-700" />
                 
                 {/* --- JOB DESCRIPTION CONTENT --- */}
-                <div 
-                    className="prose prose-invert max-w-none text-gray-300"
-                    dangerouslySetInnerHTML={{ __html: sanitizedDescription }} 
-                />
+                {/* Conditionally render the PDF viewer or the rich text */}
+                {jd.uploadedFileUrl ? (
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4 text-white">Job Description Document</h2>
+                        <PdfViewer fileUrl={jd.uploadedFileUrl} />
+                    </div>
+                ) : (
+                    <div 
+                        className="prose prose-invert max-w-none text-gray-300"
+                        dangerouslySetInnerHTML={{ __html: sanitizedDescription }} 
+                    />
+                )}
             </div>
         </div>
     );

@@ -33,56 +33,79 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Resume or Job Description not found' }, { status: 404 });
         }
         
-        // --- NEW LOGIC: Fetch the HR user who posted the job to get their API key ---
         const hrUser = await User.findById(jd.hrId).select('geminiApiKey');
         if (!hrUser || !hrUser.geminiApiKey) {
             throw new Error("The recruiter for this job has not configured their AI API key.");
         }
         const apiKey = hrUser.geminiApiKey;
-        // --- END OF NEW LOGIC ---
 
         const prompt = `
-            Analyze the provided Resume Text and Job Description.
-            Return ONLY a single JSON object with the following structure:
-            {
-                "matchScore": <A percentage number from 0 to 100 representing how well the resume matches the job requirements>,
-                "matchedSkills": <An array of strings listing key skills present in both the resume and the job description>,
-                "missingSkills": <An array of strings listing key skills required by the job but missing from the resume>,
-                "feedback": "<A short paragraph providing constructive feedback to the candidate on how to better tailor their resume for this specific role.>"
-            }
+            Act as a world-class Senior Technical Recruiter and Talent Analyst. Your task is to perform a detailed, step-by-step analysis comparing the provided Resume against the Job Description. Your output MUST be a single, minified JSON object with no markdown formatting. The reasoning for your final score must be built from the intermediate analysis steps.
 
-            --- RESUME TEXT ---
-            ${resume.parsedText}
+            The JSON output must have this exact structure:
+            {
+              "analysisSteps": {
+                "requiredSkillsAnalysis": [
+                  { "skill": "<Name of a required skill>", "isPresent": <boolean>, "evidence": "<...>" }
+                ]
+              },
+              "finalScore": {
+                "totalScore": <A percentage number from 0 to 100>,
+                "reasoning": "<...>"
+              },
+              "summaryAndFeedback": {
+                "candidateFeedback": "<Constructive feedback for the applicant on how to improve their resume for this type of role.>"
+              }
+            }
 
             --- JOB DESCRIPTION ---
             ${jd.descriptionText}
+
+            --- RESUME TEXT ---
+            ${resume.parsedText}
         `;
 
         const { structuredOutput } = await generateTextWithUserKey(prompt, apiKey);
         if (!structuredOutput) throw new Error("Failed to get structured matching results from AI.");
 
-        const matchScore = structuredOutput.matchScore || 0;
+        // --- EXTRACT DATA FROM AI RESPONSE ---
+        const matchScore = structuredOutput.finalScore?.totalScore || 0;
+        
+        const matchedSkills = structuredOutput.analysisSteps?.requiredSkillsAnalysis
+            ?.filter(skill => skill.isPresent)
+            .map(skill => skill.skill) || [];
+            
+        const missingSkills = structuredOutput.analysisSteps?.requiredSkillsAnalysis
+            ?.filter(skill => !skill.isPresent)
+            .map(skill => skill.skill) || [];
+            
+        const feedbackForCandidate = structuredOutput.summaryAndFeedback?.candidateFeedback || "No feedback generated.";
 
+        // --- SAVE THE FLATTENED DATA TO THE DATABASE ---
         const newApplication = new Application({
             jdId,
             resumeId,
             applieId: session.user.id,
             matchScore: matchScore,
-            matchedSkills: structuredOutput.matchedSkills,
+            feedbackForCandidate: feedbackForCandidate,
+            matchedSkills: matchedSkills,
+            missingSkills: missingSkills,
             status: matchScore >= 80 ? 'shortlisted' : 'in-review',
         });
+        
         await newApplication.save();
         
         await AgentLog.create({
             userId: session.user.id,
-            agentType: 'SKILL_MATCHER',
+            agentType: 'SKILL_MATCHER_V2',
             rawInput: `ResumeID: ${resumeId}, JDID: ${jdId}`,
-            aiOutput: structuredOutput
+            aiOutput: structuredOutput // We still log the full object for debugging
         });
 
+        // We return the full object to the front-end for immediate display
         return NextResponse.json({ 
             success: true, 
-            applicationId: newApplication._id, 
+            applicationId: newApplication._id.toString(), 
             matchResult: structuredOutput 
         });
 

@@ -1,0 +1,1 @@
+- responsiveness of navigation in `app/layout.js`

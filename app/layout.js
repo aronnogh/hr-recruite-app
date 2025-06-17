@@ -5,27 +5,22 @@ import Topbar from "@/components/Topbar";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import Link from "next/link";
-import { MdDashboard, MdSettings, MdArticle } from "react-icons/md"; // Example icons
+import ThemeToggle from "@/components/ThemeToggle"; // We'll create this component
 
 export const metadata = {
   title: "AI Recruitment Platform",
   description: "Modern hiring using Next.js, TailwindCSS, and Gemini AI",
 };
 
-// Main layout component
 export default async function RootLayout({ children }) {
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="en">
+    // IMMEDIATELY follow the opening <html> tag with its first child (<head>)
+    <html lang="en" className="md-sys dark">
       <head>
-        {/* Fonts: Base font and Material Symbols for icons */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-
-        {/* Material You Web Components and Typography Styles (as you provided) */}
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        {/* Material You Web Components and Typography Styles */}
         <script
           type="importmap"
           dangerouslySetInnerHTML={{
@@ -46,84 +41,52 @@ export default async function RootLayout({ children }) {
             `,
           }}
         />
-
-        {/* Global styles to apply Material You theme tokens */}
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              body {
-                background-color: var(--md-sys-color-background);
-                color: var(--md-sys-color-on-background);
-                font-family: 'Montserrat', sans-serif;
-              }
-            `,
-          }}
-        />
       </head>
-
-      <body>
+      <body className="md-typescale-body-large bg-surface text-on-surface"> {/* Use Material You typography and surface colors */}
         <Providers>
-          {/* 
-            md-theme enables Material Theming. 
-            - 'dark-theme' attribute applies the dark theme.
-            - 'source-color' generates a full color palette from a single color. 
-              Let's use a professional blue like #3B82F6.
-          */}
-          <md-theme dark-theme source-color="#3B82F6">
-            <div className="flex min-h-screen">
-              {/* 
-                Sidebar: Replaced with md-navigation-drawer.
-                - 'opened' makes it visible on desktop.
-                - Styled with M3 color tokens for the border.
-              */}
-              {session?.user && (
-                <md-navigation-drawer opened className="w-72 border-r border-solid border-[var(--md-sys-color-outline-variant)]">
-                  <div className="p-4">
-                     <h2 className="md-typescale-title-large mb-4">AI Recruiter</h2>
-                  </div>
-                  
-                  {/* Navigation List: Replaced with md-list and md-list-item */}
-                  <md-list>
-                    {session.user.role === "hr" && (
-                      <>
-                        <Link href="/hr/dashboard" passHref>
-                          <md-list-item headline="HR Dashboard">
-                            <span slot="start" className="material-symbols-outlined">dashboard</span>
-                          </md-list-item>
-                        </Link>
-                        <Link href="/hr/settings" passHref>
-                          <md-list-item headline="Settings">
-                            <span slot="start" className="material-symbols-outlined">settings</span>
-                          </md-list-item>
-                        </Link>
-                      </>
-                    )}
-                    {session.user.role === "applie" && (
-                       <Link href="/dashboard" passHref>
-                          <md-list-item headline="My Applications">
-                            <span slot="start" className="material-symbols-outlined">article</span>
-                          </md-list-item>
-                        </Link>
-                    )}
-                  </md-list>
-                </md-navigation-drawer>
-              )}
-
-              {/* Main Content Area */}
-              <main 
-                className="flex-1 flex flex-col" 
-                style={{ backgroundColor: 'var(--md-sys-color-surface)' }}
-              >
-                {/* Topbar remains, it will inherit M3 colors */}
-                <Topbar />
-
-                {/* Page content with M3-style padding */}
-                <div className="flex-grow p-6 md:p-8">
-                  {children}
-                </div>
-              </main>
-            </div>
-          </md-theme>
+          <div className="flex min-h-screen">
+            {/* Sidebar: Only visible when user is logged in */}
+            {session?.user && (
+              <aside className="w-64 bg-surface-container-low p-4 hidden md:block border-r border-outline-variant shadow-md">
+                <h2 className="md-typescale-title-large text-on-surface-container font-semibold mb-6">Navigation</h2>
+                <nav className="space-y-3">
+                  {session.user.role === "hr" && (
+                    <>
+                      <Link
+                        href="/hr/dashboard"
+                        className="block px-4 py-2 text-on-surface-variant rounded-full hover:bg-surface-container-high transition-colors duration-200"
+                      >
+                        HR Dashboard
+                      </Link>
+                      <Link
+                        href="/hr/settings"
+                        className="block px-4 py-2 text-on-surface-variant rounded-full hover:bg-surface-container-high transition-colors duration-200"
+                      >
+                        Settings
+                      </Link>
+                    </>
+                  )}
+                  {session.user.role === "applie" && (
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-2 text-on-surface-variant rounded-full hover:bg-surface-container-high transition-colors duration-200"
+                    >
+                      My Applications
+                    </Link>
+                  )}
+                </nav>
+              </aside>
+            )}
+            <main className="flex-1 flex flex-col bg-surface">
+              <Topbar /> {/* Assuming Topbar handles its own styling and responsiveness */}
+              <div className="p-4 sm:p-6 md:p-8 flex-grow">
+                {children}
+              </div>
+              <div className="p-4 sm:p-6 md:p-8 flex justify-end">
+                <ThemeToggle /> {/* Theme toggle button */}
+              </div>
+            </main>
+          </div>
         </Providers>
       </body>
     </html>

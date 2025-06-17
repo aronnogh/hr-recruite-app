@@ -16,27 +16,26 @@ const AgentLogSchema = new mongoose.Schema({
         'RESUME_PARSER', 
         'COVER_LETTER_GENERATOR', 
         'SKILL_MATCHER',
-        'SKILL_MATCHER_V2' // The new, high-accuracy matcher
+        'SKILL_MATCHER_V2',
+        'SKILL_MATCHER_V3' // The new, high-accuracy matcher
     ] 
     // --- END OF FIX ---
   },
-  fileName: String, // Optional: The name of the file being processed
+  fileName: String,
   rawInput: { 
     type: String, 
     required: true 
-  }, // The raw text or prompt sent to the AI
+  },
   aiOutput: { 
     type: mongoose.Schema.Types.Mixed, 
     required: true 
-  }, // The structured JSON or raw text response from the AI
-}, { timestamps: { createdAt: true, updatedAt: false } }); // Only track creation time
+  },
+}, { timestamps: { createdAt: true, updatedAt: false } });
 
-// Virtual 'id' field
 AgentLogSchema.virtual('id').get(function(){
     return this._id.toHexString();
 });
 
-// Ensure virtuals are included in toJSON outputs
 AgentLogSchema.set('toJSON', {
     virtuals: true
 });

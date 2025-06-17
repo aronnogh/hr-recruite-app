@@ -85,3 +85,34 @@ export async function generateTextWithUserKey(prompt, apiKey) {
   
     return { textResponse, structuredOutput };
 }
+
+
+/**
+ * Fetches a file from a public URL and uses Gemini to extract its text content.
+ * @param {string} url The public URL of the file (e.g., from Vercel Blob).
+ * @param {string} apiKey The user-provided Gemini API key.
+ * @returns {Promise<string>} The extracted text content as a string.
+ */
+export async function extractTextFromUrl(url, apiKey) {
+    const model = getClient(apiKey, "gemini-1.5-flash-latest"); // Use a powerful model for extraction
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch file from URL: ${url}`);
+    }
+
+    const fileBuffer = Buffer.from(await response.arrayBuffer());
+    const mimeType = response.headers.get('content-type') || 'application/pdf';
+
+    const filePart = {
+        inlineData: {
+            data: fileBuffer.toString("base64"),
+            mimeType: mimeType,
+        },
+    };
+
+    const prompt = "Extract all text content from the provided document. Return only the raw text, with no formatting or commentary.";
+    const result = await model.generateContent([prompt, filePart]);
+    
+    return result.response.text();
+}

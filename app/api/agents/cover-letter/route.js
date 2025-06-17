@@ -2,10 +2,12 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { generateTextResponse } from '@/utils/gemini';
+// --- FIX 1: Import the correctly named function ---
+import { generateTextWithUserKey } from '@/utils/gemini';
 import dbConnect from '@/lib/mongoose';
 import Application from '@/models/Application';
 import AgentLog from '@/models/AgentLog';
+import User from '@/models/User'; // <-- Import User model
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
@@ -16,12 +18,29 @@ export async function POST(req) {
 
     try {
         await dbConnect();
-        // Fetch the application and populate related documents
-        const application = await Application.findById(applicationId).populate('resumeId').populate('jdId');
-        if (!application) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
         
-        const resume = application.resumeId;
-        const jd = application.jdId;
+        // Fetch the application and populate related documents to get all necessary data
+        const application = await Application.findById(applicationId)
+            .populate({
+                path: 'jdId',
+                select: 'title descriptionText hrId' // We need the hrId from the JD
+            })
+            .populate({
+                path: 'resumeId',
+                select: 'parsedText' // We need the resume text
+            });
+
+        if (!application || !application.resumeId || !application.jdId) {
+            return NextResponse.json({ error: 'Application data not found' }, { status: 404 });
+        }
+        
+        // --- FIX 2: Fetch the HR user's API key ---
+        const hrUser = await User.findById(application.jdId.hrId).select('geminiApiKey');
+        if (!hrUser || !hrUser.geminiApiKey) {
+            throw new Error("The recruiter for this job has not configured their AI API key.");
+        }
+        const apiKey = hrUser.geminiApiKey;
+        // --- END OF FIX ---
 
         const prompt = `
             Act as a career coach. Based on the user's Resume and the Job Description provided, write a compelling and concise cover letter.
@@ -29,13 +48,14 @@ export async function POST(req) {
             The output should be the raw text of the cover letter only, with no extra text or formatting.
 
             --- RESUME TEXT ---
-            ${resume.parsedText}
+            ${application.resumeId.parsedText}
 
             --- JOB DESCRIPTION ---
-            ${jd.descriptionText}
+            ${application.jdId.descriptionText}
         `;
 
-        const { textResponse } = await generateTextResponse(prompt);
+        // --- FIX 3: Call the correct function with the API key ---
+        const { textResponse } = await generateTextWithUserKey(prompt, apiKey);
         if (!textResponse) throw new Error("Failed to generate cover letter from AI.");
 
         // Update the application with the generated cover letter
@@ -43,8 +63,10 @@ export async function POST(req) {
         await application.save();
 
         await AgentLog.create({
-            userId: session.user.id, agentType: 'COVER_LETTER_GENERATOR',
-            rawInput: `ApplicationID: ${applicationId}, Tone: ${tone}`, aiOutput: { coverLetter: textResponse }
+            userId: session.user.id,
+            agentType: 'COVER_LETTER_GENERATOR',
+            rawInput: `ApplicationID: ${applicationId}, Tone: ${tone}`,
+            aiOutput: { coverLetter: textResponse }
         });
 
         return NextResponse.json({ success: true, coverLetter: textResponse });

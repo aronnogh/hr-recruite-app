@@ -6,12 +6,14 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "copyfiles -u 1 \"node_modules/pdfjs-dist/build/pdf.worker.min.js\" public"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.9.1",
     "@google/generative-ai": "^0.24.1",
     "@react-email/components": "^0.1.0",
+    "@react-email/render": "^1.1.2",
     "@supabase/supabase-js": "^2.50.0",
     "@tiptap/react": "^2.14.0",
     "@tiptap/starter-kit": "^2.14.0",
@@ -23,14 +25,17 @@
     "mongoose": "^8.15.2",
     "next": "15.3.3",
     "next-auth": "^4.24.11",
+    "nodemailer": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-email": "^4.0.16",
+    "react-pdf": "^9.2.1",
     "resend": "^4.6.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "copyfiles": "^2.4.1",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4"

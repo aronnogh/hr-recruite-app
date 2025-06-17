@@ -1,10 +1,26 @@
 // components/emails/MeetingInvitationEmail.js
 import * as React from 'react';
-import { Html, Head, Body, Container, Heading, Text, Link, Button } from '@react-email/components';
+import { Html, Head, Body, Container, Heading, Text, Button } from '@react-email/components';
 
-export function MeetingInvitationEmail({ candidateName, jobTitle, hrName, companyName }) {
-  // In a real app, you'd generate a unique scheduling link (e.g., Calendly)
-  const schedulingLink = "https://calendly.com/your-company-link";
+// --- FIX 1: Add `schedulingLink` to the list of accepted props ---
+export function MeetingInvitationEmail({ candidateName, jobTitle, hrName, companyName, schedulingLink }) {
+
+  // --- FIX 2: Remove the hardcoded, static link ---
+  // const schedulingLink = "https://calendly.com/your-company-link"; // <-- DELETE THIS LINE
+
+  // A basic check to prevent rendering a broken link
+  if (!schedulingLink) {
+    return (
+        <Html>
+            <Head />
+            <Body style={main}>
+                <Container style={container}>
+                    <Text>Error: Scheduling link is missing for this recruiter.</Text>
+                </Container>
+            </Body>
+        </Html>
+    );
+  }
 
   return (
     <Html>
@@ -21,6 +37,7 @@ export function MeetingInvitationEmail({ candidateName, jobTitle, hrName, compan
           <Text style={paragraph}>
             Please use the link below to select a time that is convenient for you.
           </Text>
+          {/* This button will now correctly use the `schedulingLink` from props */}
           <Button style={button} href={schedulingLink}>
             Schedule Your Interview
           </Button>
@@ -40,7 +57,7 @@ export function MeetingInvitationEmail({ candidateName, jobTitle, hrName, compan
   );
 }
 
-// Styles
+// Styles (unchanged)
 const main = { backgroundColor: '#f6f9fc', fontFamily: 'Arial, sans-serif' };
 const container = { margin: '0 auto', padding: '20px 0 48px', width: '580px' };
 const heading = { fontSize: '24px', lineHeight: '1.3', fontWeight: '700', color: '#484848' };

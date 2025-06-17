@@ -1,10 +1,6 @@
 // utils/gemini.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Use a model that supports file inputs, like gemini-1.5-pro
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-
 /**
  * A utility to extract JSON from a string that might contain markdown.
  * Gemini often returns JSON wrapped in ```json ... ```.
@@ -30,13 +26,29 @@ function extractJson(str) {
 }
 
 /**
- * Sends a file directly to the Gemini API for parsing and analysis.
- * @param {File} file The file object (PDF, DOCX, TXT) to send.
- * @param {string} prompt The text prompt instructing Gemini what to do.
+ * Creates a Gemini client instance with a specific API key.
+ * @param {string} apiKey The user-provided Gemini API key.
+ * @returns {import("@google/generative-ai").GenerativeModel}
+ */
+function getClient(apiKey, modelName = "gemini-pro") {
+    if (!apiKey) {
+        throw new Error("A Gemini API Key is required for this operation.");
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+    return genAI.getGenerativeModel({ model: modelName });
+}
+
+/**
+ * Sends a file directly to the Gemini API for parsing and analysis using a specific API key.
+ * @param {File} file The file object to send.
+ * @param {string} prompt The text prompt.
+ * @param {string} apiKey The HR user's Gemini API key.
  * @returns {Promise<{parsedText: string, structuredOutput: object | null}>}
  */
-export async function processFileWithGemini(file, prompt) {
-  // 1. Convert the file to a GoogleGenerativeAI.Part object.
+export async function processFileWithUserKey(file, prompt, apiKey) {
+  // Use a model that supports file inputs
+  const model = getClient(apiKey, "gemini-1.5-flash-latest");
+  
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const filePart = {
     inlineData: {
@@ -45,37 +57,31 @@ export async function processFileWithGemini(file, prompt) {
     },
   };
 
-  // 2. Send the file and the text prompt to Gemini.
-  // The model processes the contents of `filePart` and uses the `prompt` for instructions.
   const result = await model.generateContent([prompt, filePart]);
   const response = result.response;
   const aiResponseText = response.text();
-
-  // 3. Extract the structured JSON from the response text.
   const structuredOutput = extractJson(aiResponseText);
-  
-  // The full text might be part of the structured output if we ask for it,
-  // or we can fall back to the raw response.
   const parsedText = structuredOutput?.fullText || aiResponseText;
 
   if (!structuredOutput) {
       console.warn("Gemini did not return a structured JSON object. The response was:", aiResponseText);
   }
-
+  
   return { parsedText, structuredOutput };
 }
 
 /**
- * Sends a text-only prompt to the Gemini API.
+ * Sends a text-only prompt to the Gemini API using a specific API key.
  * @param {string} prompt The complete text prompt.
+ * @param {string} apiKey The HR user's Gemini API key.
  * @returns {Promise<{textResponse: string, structuredOutput: object | null}>}
  */
-export async function generateTextResponse(prompt) {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); // A text-model is fine here
-  const result = await model.generateContent(prompt);
-  const response = result.response;
-  const textResponse = response.text();
-  const structuredOutput = extractJson(textResponse);
+export async function generateTextWithUserKey(prompt, apiKey) {
+    const model = getClient(apiKey, "gemini-1.5-flash-latest"); // A text model is sufficient and cheaper
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const textResponse = response.text();
+    const structuredOutput = extractJson(textResponse);
   
-  return { textResponse, structuredOutput };
+    return { textResponse, structuredOutput };
 }

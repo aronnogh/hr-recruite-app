@@ -2,40 +2,45 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { generateTextResponse } from '@/utils/gemini';
+import { generateTextWithUserKey } from '@/utils/gemini';
 import dbConnect from '@/lib/mongoose';
-
-// --- IMPORT THE MODELS DIRECTLY ---
 import Resume from '@/models/Resume';
 import JobDescription from '@/models/JobDescription';
 import Application from '@/models/Application';
 import AgentLog from '@/models/AgentLog';
-import User from '@/models/User'; // <-- THIS IS THE CRITICAL FIX
-
-import { sendEmail } from '@/utils/email';
-import { NextStepsEmail } from '@/components/emails/NextStepsEmail';
+import User from '@/models/User';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { resumeId, jdId } = await req.json();
-    if (!resumeId || !jdId) return NextResponse.json({ error: 'Resume ID and JD ID are required' }, { status: 400 });
+    if (!resumeId || !jdId) {
+        return NextResponse.json({ error: 'Resume ID and Job Description ID are required' }, { status: 400 });
+    }
 
     try {
         await dbConnect();
-
-        // Now that the models are imported, we can use them directly.
-        const [resume, jd, user] = await Promise.all([
+        
+        const [resume, jd] = await Promise.all([
             Resume.findById(resumeId),
-            JobDescription.findById(jdId),
-            User.findById(session.user.id) // <-- USE THE IMPORTED MODEL
+            JobDescription.findById(jdId)
         ]);
 
-        if (!resume || !jd || !user) {
-            return NextResponse.json({ error: 'Required data not found' }, { status: 404 });
+        if (!resume || !jd) {
+            return NextResponse.json({ error: 'Resume or Job Description not found' }, { status: 404 });
         }
         
+        // --- NEW LOGIC: Fetch the HR user who posted the job to get their API key ---
+        const hrUser = await User.findById(jd.hrId).select('geminiApiKey');
+        if (!hrUser || !hrUser.geminiApiKey) {
+            throw new Error("The recruiter for this job has not configured their AI API key.");
+        }
+        const apiKey = hrUser.geminiApiKey;
+        // --- END OF NEW LOGIC ---
+
         const prompt = `
             Analyze the provided Resume Text and Job Description.
             Return ONLY a single JSON object with the following structure:
@@ -52,8 +57,8 @@ export async function POST(req) {
             --- JOB DESCRIPTION ---
             ${jd.descriptionText}
         `;
-        
-        const { structuredOutput } = await generateTextResponse(prompt);
+
+        const { structuredOutput } = await generateTextWithUserKey(prompt, apiKey);
         if (!structuredOutput) throw new Error("Failed to get structured matching results from AI.");
 
         const matchScore = structuredOutput.matchScore || 0;
@@ -64,21 +69,9 @@ export async function POST(req) {
             applieId: session.user.id,
             matchScore: matchScore,
             matchedSkills: structuredOutput.matchedSkills,
-            // Set initial status based on score
-            status: matchScore >= 80 ? 'shortlisted' : 'in-review', 
+            status: matchScore >= 80 ? 'shortlisted' : 'in-review',
         });
-        
-        // Save first to get an ID for the Cover Letter agent
         await newApplication.save();
-
-        // --- EMAIL LOGIC ---
-        if (matchScore >= 80) {
-            await sendEmail({
-                to: user.email,
-                subject: `Positive Update on Your Application for ${jd.title}`,
-                reactElement: <NextStepsEmail candidateName={user.name} jobTitle={jd.title} />
-            });
-        }
         
         await AgentLog.create({
             userId: session.user.id,

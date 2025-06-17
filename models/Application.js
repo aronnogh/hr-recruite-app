@@ -1,3 +1,4 @@
+// models/Application.js
 import mongoose from 'mongoose';
 
 const ApplicationSchema = new mongoose.Schema({
@@ -9,7 +10,10 @@ const ApplicationSchema = new mongoose.Schema({
   generatedCoverLetter: String,
   status: {
     type: String,
-    enum: ['submitted', 'in-review', 'shortlisted', 'rejected'],
+    // --- THIS IS THE FIX ---
+    // Add 'interview-scheduled' to the list of allowed values.
+    enum: ['submitted', 'in-review', 'shortlisted', 'rejected', 'interview-scheduled'],
+    // --- END OF FIX ---
     default: 'submitted'
   },
   submittedAt: { type: Date, default: Date.now },

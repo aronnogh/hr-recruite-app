@@ -4,59 +4,102 @@
 import { useActionState, useRef, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createJobDescription } from '@/app/actions/jobActions';
-import RichTextEditor from '../ui/RichTextEditor'; // <-- IMPORT THE NEW COMPONENT
+import RichTextEditor from '../ui/RichTextEditor';
 
-// ... (SubmitButton component is unchanged) ...
+// Import the specific React Icon you want to use
+import { FaFileUpload } from 'react-icons/fa'; // Example: Font Awesome File Upload icon
+
+// ... (SubmitButton component remains the same, as its UI is handled by Material You) ...
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500"
-    >
-      {/* The text changes based on the pending state */}
-      {pending ? 'Saving...' : 'Save Job Description'} 
-    </button>
+    <md-filled-button type="submit" disabled={pending} class="w-full mt-4"> {/* Material You Filled Button */}
+      {pending ? 'Saving...' : 'Save Job Description'}
+    </md-filled-button>
   );
 }
 
 export default function JD_UploadForm() {
   const [state, formAction] = useActionState(createJobDescription, null);
   const formRef = useRef(null);
-  
+
   useEffect(() => {
     if (state?.success) {
-        formRef.current?.reset();
-        // We might need to manually reset the editor as well if it holds state
-        // For now, form reset is a good start
+      formRef.current?.reset();
+      // We might need to manually reset the editor as well if it holds state
+      // For now, form reset is a good start
     }
   }, [state]);
 
   return (
-    <div className="p-6 bg-gray-800 rounded-lg border border-gray-700">
-      <h2 className="text-2xl font-bold mb-4">Create New Job Description</h2>
-      <form ref={formRef} action={formAction} className="space-y-4">
+    <div className="p-6 sm:p-8 md:p-10 bg-surface-container rounded-2xl shadow-lg border border-outline-variant max-w-2xl mx-auto my-8">
+      <h2 className="md-typescale-headline-small text-on-surface mb-6 text-center">Create New Job Description</h2>
+      <form ref={formRef} action={formAction} className="space-y-6">
+        {/* Job Title Input */}
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-300">Job Title</label>
-          <input type="text" name="title" id="title" required className="mt-1 block w-full bg-gray-900 border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+          <md-filled-textfield
+            label="Job Title"
+            type="text"
+            name="title"
+            id="title"
+            required
+            class="w-full"
+          ></md-filled-textfield>
         </div>
-        
-        {/* --- THIS IS THE CHANGE --- */}
+
+        {/* Description Rich Text Editor */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">Description (Paste or Write)</label>
+          <label htmlFor="description" className="block md-typescale-label-large text-on-surface-variant mb-2">Description (Paste or Write)</label>
           <RichTextEditor name="description" />
         </div>
-        {/* --- END OF CHANGE --- */}
 
-        <div className="text-center my-2 text-gray-400">OR</div>
-        <div>
-          <label htmlFor="jdFile" className="block text-sm font-medium text-gray-300">Upload PDF</label>
-          <input type="file" name="jdFile" id="jdFile" accept=".pdf" className="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800"/>
+        {/* OR Separator with Material You Divider */}
+        <div className="flex items-center my-4">
+          <md-divider class="flex-grow"></md-divider>
+          <span className="px-4 md-typescale-label-medium text-on-surface-variant">OR</span>
+          <md-divider class="flex-grow"></md-divider>
         </div>
+
+        {/* File Upload */}
+        <div>
+          <label htmlFor="jdFile" className="block md-typescale-label-large text-on-surface-variant mb-2">Upload PDF</label>
+          <div className="flex items-center space-x-2">
+            <input
+              type="file"
+              name="jdFile"
+              id="jdFile"
+              accept=".pdf"
+              className="hidden"
+            />
+            <label
+              htmlFor="jdFile"
+              className="inline-flex items-center px-4 py-2 rounded-full md-typescale-label-large cursor-pointer
+                         bg-secondary-container text-on-secondary-container hover:bg-secondary-container-hover
+                         transition-colors duration-200 shadow-sm"
+            >
+              {/* Replaced <md-icon> with FaFileUpload from react-icons */}
+              <FaFileUpload className="mr-2 text-on-secondary-container" /> {/* Apply text color from Tailwind/Material You */}
+              Choose File
+            </label>
+            <span className="md-typescale-body-medium text-on-surface-variant" id="fileNameDisplay">
+              No file chosen
+            </span>
+          </div>
+        </div>
+
         <SubmitButton />
-        {state?.error && <p className="text-red-500 mt-2">{state.error}</p>}
-        {state?.success && <p className="text-green-500 mt-2">{state.message}</p>}
+
+        {/* State messages (success/error) */}
+        {state?.error && (
+          <p className="md-typescale-body-small text-error-container bg-error px-4 py-2 rounded-lg text-center mt-2">
+            {state.error}
+          </p>
+        )}
+        {state?.success && (
+          <p className="md-typescale-body-small text-on-primary-container bg-primary-container px-4 py-2 rounded-lg text-center mt-2">
+            {state.message}
+          </p>
+        )}
       </form>
     </div>
   );

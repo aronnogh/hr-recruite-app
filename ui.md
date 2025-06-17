@@ -1,1 +1,3 @@
 - responsiveness of navigation in `app/layout.js`
+- upload pdf not working on `components/hr/JD_UploadForm.js`
+-

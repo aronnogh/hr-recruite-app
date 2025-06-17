@@ -1,3 +1,4 @@
 - responsiveness of navigation in `app/layout.js`
 - upload pdf not working on `components/hr/JD_UploadForm.js`
 - some options of rich text editor not working on `app/hr/dashboard/page.js` in `components/ui/RichTextEditor.js`
+- have to give a input field for hr for giving name of his company

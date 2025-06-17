@@ -21,39 +21,39 @@ export default function ApplicationStatusUpdater({ applicationId, currentStatus 
     // Helper function to dynamically apply Material You themed classes based on button status
     const getButtonClass = (status) => {
         // Base Material You typography class for all buttons
-        const baseClass = "md-typescale-label-large";
+        const baseClass = "md-typescale-label-large rounded-full px-5 py-2 font-medium transition-all duration-200 ease-in-out"; // Added consistent padding, font-weight, and transition for smoother effects
 
         // Determine if the current button's status matches the application's actual status
         if (status === currentStatus) {
             // Apply distinct Material You themed colors for the active/selected status
             switch (status) {
                 case 'shortlisted':
-                    // Use tertiary color for 'shortlisted' (often a green/success-like tone in M3)
-                    return `${baseClass} bg-tertiary text-on-tertiary shadow-sm`;
+                    // Use tertiary color for 'shortlisted' (green-like) with elevation
+                    return `${baseClass} bg-tertiary text-on-tertiary shadow-md md-elevation-2`;
                 case 'rejected':
-                    // Use error color for 'rejected'
-                    return `${baseClass} bg-error text-on-error shadow-sm`;
+                    // Use error color for 'rejected' (red-like) with elevation
+                    return `${baseClass} bg-error text-on-error shadow-md md-elevation-2`;
                 case 'viewed':
-                    // Use primary color for 'viewed' (as a default active state)
-                    return `${baseClass} bg-primary text-on-primary shadow-sm`;
+                    // Use primary color for 'viewed' (yellow/orange-like) with elevation
+                    return `${baseClass} bg-primary text-on-primary shadow-md md-elevation-2`;
                 default:
-                    // Fallback to primary for any other active status
-                    return `${baseClass} bg-primary text-on-primary shadow-sm`;
+                    // Fallback for any other active status, using primary
+                    return `${baseClass} bg-primary text-on-primary shadow-md md-elevation-2`;
             }
         } else {
-            // For inactive statuses, rely on the default styling of md-filled-tonal-button,
-            // but ensure text color consistency and add a hover effect for interactivity.
-            return `${baseClass} text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-200`;
+            // For inactive statuses, use a filled-tonal appearance (Material You default for md-filled-tonal-button),
+            // and apply subtle hover effects.
+            return `${baseClass} bg-surface-container-high text-on-surface-variant shadow-sm hover:bg-surface-container-highest hover:shadow-md md-elevation-0`;
         }
     };
 
     return (
         // Container for the buttons, using Material You spacing and responsive flex behavior
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4"> {/* Increased gap for better spacing between buttons */}
             {/* Shortlist Button */}
             <md-filled-tonal-button
                 onClick={() => handleUpdate('shortlisted')}
-                disabled={isPending}
+                disabled={isPending || currentStatus === 'shortlisted'} // Disable if already shortlisted or pending
                 class={getButtonClass('shortlisted')} // Apply dynamic classes
             >
                 Shortlist
@@ -62,7 +62,7 @@ export default function ApplicationStatusUpdater({ applicationId, currentStatus 
             {/* Reject Button */}
             <md-filled-tonal-button
                 onClick={() => handleUpdate('rejected')}
-                disabled={isPending}
+                disabled={isPending || currentStatus === 'rejected'} // Disable if already rejected or pending
                 class={getButtonClass('rejected')} // Apply dynamic classes
             >
                 Reject
@@ -71,7 +71,7 @@ export default function ApplicationStatusUpdater({ applicationId, currentStatus 
             {/* Mark as Viewed Button */}
             <md-filled-tonal-button
                 onClick={() => handleUpdate('viewed')}
-                disabled={isPending}
+                disabled={isPending || currentStatus === 'viewed'} // Disable if already viewed or pending
                 class={getButtonClass('viewed')} // Apply dynamic classes
             >
                 Mark as Viewed

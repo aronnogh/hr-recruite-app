@@ -64,3 +64,18 @@ export async function processFileWithGemini(file, prompt) {
 
   return { parsedText, structuredOutput };
 }
+
+/**
+ * Sends a text-only prompt to the Gemini API.
+ * @param {string} prompt The complete text prompt.
+ * @returns {Promise<{textResponse: string, structuredOutput: object | null}>}
+ */
+export async function generateTextResponse(prompt) {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); // A text-model is fine here
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const textResponse = response.text();
+  const structuredOutput = extractJson(textResponse);
+  
+  return { textResponse, structuredOutput };
+}

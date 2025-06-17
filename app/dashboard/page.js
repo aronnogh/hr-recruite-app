@@ -1,27 +1,41 @@
 // app/dashboard/page.js
 import { getServerSession } from "next-auth";
 import { authOptions } from "../api/auth/[...nextauth]/route";
-import { redirect } from "next/navigation";
+import dbConnect from "@/lib/mongoose";
+import Application from "@/models/Application";
 
-export default async function DashboardPage() {
+async function getMyApplications(userId) {
+    await dbConnect();
+    const applications = await Application.find({ applieId: userId })
+        .populate({ path: 'jdId', select: 'title' })
+        .sort({ submittedAt: -1 });
+    return JSON.parse(JSON.stringify(applications));
+}
+
+export default async function ApplieDashboardPage() {
     const session = await getServerSession(authOptions);
-
-    if (!session) {
-        redirect("/api/auth/signin?callbackUrl=/dashboard");
-    }
+    const myApplications = await getMyApplications(session.user.id);
 
     return (
         <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="mt-2">Welcome, {session.user.name}!</p>
-            <p>Your role is: <span className="font-semibold capitalize">{session.user.role}</span></p>
-            
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold">Update Your Role</h2>
-                <p className="text-gray-400 mt-1">
-                    (This is a placeholder. You would build a form here to update the user's role in the MongoDB database.)
-                </p>
+            <h1 className="text-3xl font-bold">My Applications</h1>
+            <p className="mt-2 text-gray-400">Here's a summary of the jobs you've applied for.</p>
+            <div className="mt-8 space-y-4">
+                {myApplications.length > 0 ? myApplications.map(app => (
+                    <div key={app.id} className="p-4 bg-gray-800 rounded-lg flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-bold">{app.jdId.title}</h2>
+                            <p className="text-sm text-gray-400">Submitted on: {new Date(app.submittedAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                             <p className="font-bold text-lg">Match: {app.matchScore}%</p>
+                             <p className="text-sm capitalize">Status: <span className="font-semibold">{app.status}</span></p>
+                        </div>
+                    </div>
+                )) : (
+                    <p>You haven't applied to any jobs yet.</p>
+                )}
             </div>
         </div>
-    )
+    );
 }

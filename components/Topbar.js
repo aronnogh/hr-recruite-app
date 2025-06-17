@@ -1,11 +1,20 @@
 // components/Topbar.js
-import AuthButton from "./AuthButton";
+"use client"; // This directive is correct and necessary because it renders custom elements.
+
+import AuthButton from "@/components/AuthButton";
 
 export default function Topbar() {
   return (
-    <header className="w-full bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center">
-      <h1 className="text-lg font-semibold text-white">My App</h1>
-      <AuthButton />
+    <header className="w-full bg-surface-container-high border-b border-outline-variant p-4 flex justify-between items-center relative">
+      <md-elevation></md-elevation> {/* This component is the culprit for hydration errors if SSR'd */}
+
+      <h1 className="md-typescale-title-large text-on-surface">
+        AI Recruitment Platform
+      </h1>
+
+      <div>
+        <AuthButton />
+      </div>
     </header>
   );
 }

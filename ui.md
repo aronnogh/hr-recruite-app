@@ -2,3 +2,5 @@
 - upload pdf not working on `components/hr/JD_UploadForm.js`
 - some options of rich text editor not working on `app/hr/dashboard/page.js` in `components/ui/RichTextEditor.js`
 - have to give a input field for hr for giving name of his company
+- should be written the button `saved already` in the `setttings` when it is already set
+- review all the responsiveness again and fix for final time.

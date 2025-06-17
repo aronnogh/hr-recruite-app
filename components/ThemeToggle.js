@@ -1,6 +1,8 @@
 // components/ThemeToggle.js
 "use client"; // This is a client component
 import React, { useEffect, useState } from 'react';
+import { FaSun, FaMoon } from 'react-icons/fa'; // Import the desired icons
+
 
 // We no longer need these direct imports here
 // import '@material/web/iconbutton/icon-button.js';
@@ -35,11 +37,26 @@ export default function ThemeToggle() {
     }
   };
 
-  return (
-    // Ensure these custom elements are registered before this component renders.
-    // This is handled by the importmap and the import '@material/web/all.js' in layout.js
-    <md-icon-button onClick={toggleTheme}>
-      <md-icon>{isDarkMode ? 'light_mode' : 'dark_mode'}</md-icon>
-    </md-icon-button>
-  );
+ return (
+    // You'll use a standard HTML button or a custom React button component
+    // and apply styling as needed. Tailwind CSS is a great choice here.
+    <button
+        onClick={toggleTheme}
+        className="
+            p-2 rounded-full
+            bg-surface-container-low text-on-surface-variant
+            hover:bg-surface-container-high
+            focus:outline-none focus:ring-2 focus:ring-primary
+            transition-colors duration-200
+            flex items-center justify-center
+        "
+        aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+        {isDarkMode ? (
+            <FaSun className="w-6 h-6 text-on-surface" /> // Icon for light mode
+        ) : (
+            <FaMoon className="w-6 h-6 text-on-surface" /> // Icon for dark mode
+        )}
+    </button>
+);
 }

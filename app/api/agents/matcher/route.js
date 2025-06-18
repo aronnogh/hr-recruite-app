@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { generateTextWithUserKey, extractTextFromUrl } from '@/utils/gemini'; // <-- Import new utility
+import { generateTextWithUserKey, extractTextFromUrl } from '@/utils/gemini';
 import dbConnect from '@/lib/mongoose';
 import Resume from '@/models/Resume';
 import JobDescription from '@/models/JobDescription';
@@ -12,10 +12,14 @@ import User from '@/models/User';
 
 export async function POST(req) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { resumeId, jdId } = await req.json();
-    if (!resumeId || !jdId) return NextResponse.json({ error: 'Resume ID and JD ID are required' }, { status: 400 });
+    if (!resumeId || !jdId) {
+        return NextResponse.json({ error: 'Resume ID and Job Description ID are required' }, { status: 400 });
+    }
 
     try {
         await dbConnect();
@@ -25,30 +29,28 @@ export async function POST(req) {
             JobDescription.findById(jdId)
         ]);
 
-        if (!resume || !jd) return NextResponse.json({ error: 'Resume or Job Description not found' }, { status: 404 });
+        if (!resume || !jd) {
+            return NextResponse.json({ error: 'Resume or Job Description not found' }, { status: 404 });
+        }
         
-        const hrUser = await User.findById(jd.hrId).select('geminiApiKey');
+        // Fetch the HR user's full AI settings
+        const hrUser = await User.findById(jd.hrId).select('geminiApiKey geminiModel');
         if (!hrUser || !hrUser.geminiApiKey) {
-            throw new Error("The recruiter for this job has not configured their AI API key.");
+            throw new Error("The recruiter for this job has not configured their AI settings.");
         }
-        const apiKey = hrUser.geminiApiKey;
+        const { geminiApiKey, geminiModel } = hrUser;
 
-        // --- NEW LOGIC: Get accurate JD content, whether from text or PDF ---
-        let jdContent = '';
+        // Get accurate JD content, whether from text or PDF, using the user's selected model
+        let jdContent = jd.descriptionText;
         if (jd.uploadedFileUrl) {
-            console.log(`Fetching JD content from PDF URL: ${jd.uploadedFileUrl}`);
-            jdContent = await extractTextFromUrl(jd.uploadedFileUrl, apiKey);
-        } else {
-            jdContent = jd.descriptionText;
+            console.log(`Fetching JD content from PDF URL using model: ${geminiModel}`);
+            // Pass the user's selected model to the extraction function
+            jdContent = await extractTextFromUrl(jd.uploadedFileUrl, geminiApiKey, geminiModel);
         }
-
         if (!jdContent) {
             throw new Error("Could not retrieve any content for the Job Description.");
         }
-        // --- END OF NEW LOGIC ---
 
-
-        // --- NEW, HIGH-ACCURACY "CHAIN-OF-THOUGHT" PROMPT ---
         const prompt = `
             You are an elite Senior Technical Recruiter. Your task is to perform a rigorous, evidence-based analysis comparing a Resume against a Job Description. Your analysis must be structured and methodical.
 
@@ -94,48 +96,42 @@ export async function POST(req) {
             ${resume.parsedText}
         `;
 
-        const { structuredOutput } = await generateTextWithUserKey(prompt, apiKey);
+        // Pass the user's selected model to the analysis function
+        const { structuredOutput } = await generateTextWithUserKey(prompt, geminiApiKey, geminiModel);
         if (!structuredOutput) throw new Error("Failed to get structured matching results from AI.");
 
-        // --- EXTRACT AND SAVE THE NEW DATA STRUCTURE ---
         const matchScore = structuredOutput.matchScore?.score || 0;
         
         const newApplication = new Application({
             jdId,
             resumeId,
             applieId: session.user.id,
-            matchScore: matchScore,
+            matchScore,
             feedbackForCandidate: structuredOutput.feedbackForCandidate,
             matchedSkills: structuredOutput.analysis?.must_have_skills?.filter(s => s.isPresent).map(s => s.skill) || [],
             missingSkills: structuredOutput.analysis?.must_have_skills?.filter(s => !s.isPresent).map(s => s.skill) || [],
-            status: matchScore >= 75 ? 'shortlisted' : 'in-review', // Adjusted threshold for the stricter agent
+            status: matchScore >= 75 ? 'shortlisted' : 'in-review',
         });
-        
         await newApplication.save();
         
         await AgentLog.create({
             userId: session.user.id,
-            agentType: 'SKILL_MATCHER_V3', // Version up!
+            agentType: 'SKILL_MATCHER_V3',
             rawInput: `ResumeID: ${resumeId}, JDID: ${jdId}`,
             aiOutput: structuredOutput
         });
 
-        // The front-end needs a consistent object, so we create one.
+        // Create a consistent result object for the frontend
         const frontEndResult = {
-            finalScore: {
-                totalScore: matchScore,
-                reasoning: structuredOutput.matchScore?.reasoning,
-            },
-            summaryAndFeedback: {
-                candidateFeedback: structuredOutput.feedbackForCandidate,
-            },
-            generatedCoverLetter: "" // This will be filled by the next agent
+            finalScore: { totalScore: matchScore, reasoning: structuredOutput.matchScore?.reasoning },
+            summaryAndFeedback: { candidateFeedback: structuredOutput.feedbackForCandidate },
+            generatedCoverLetter: ""
         };
 
         return NextResponse.json({ 
             success: true, 
             applicationId: newApplication._id.toString(), 
-            matchResult: frontEndResult // Send a consistent object to the frontend
+            matchResult: frontEndResult 
         });
 
     } catch (error) {

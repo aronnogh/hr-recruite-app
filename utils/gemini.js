@@ -2,8 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
- * A utility to extract JSON from a string that might contain markdown.
- * Gemini often returns JSON wrapped in ```json ... ```.
+ * Extracts a JSON object from a string that might be wrapped in markdown.
  * @param {string} str The string to parse.
  * @returns {object | null} The parsed JSON object or null if parsing fails.
  */
@@ -13,7 +12,7 @@ function extractJson(str) {
     try {
       return JSON.parse(match[1]);
     } catch (e) {
-      console.error('Failed to parse JSON from Gemini response:', e);
+      console.error('Failed to parse JSON from Gemini markdown:', e);
       return null;
     }
   }
@@ -26,11 +25,12 @@ function extractJson(str) {
 }
 
 /**
- * Creates a Gemini client instance with a specific API key.
+ * Creates a Gemini client instance on-demand with a specific API key and model name.
  * @param {string} apiKey The user-provided Gemini API key.
+ * @param {string} modelName The name of the model to use.
  * @returns {import("@google/generative-ai").GenerativeModel}
  */
-function getClient(apiKey, modelName = "gemini-pro") {
+function getClient(apiKey, modelName = "gemini-1.5-flash-latest") { // Set a sensible, cost-effective default
     if (!apiKey) {
         throw new Error("A Gemini API Key is required for this operation.");
     }
@@ -39,15 +39,15 @@ function getClient(apiKey, modelName = "gemini-pro") {
 }
 
 /**
- * Sends a file directly to the Gemini API for parsing and analysis using a specific API key.
+ * Sends a file directly to Gemini for analysis using a user-specific key and model.
  * @param {File} file The file object to send.
  * @param {string} prompt The text prompt.
  * @param {string} apiKey The HR user's Gemini API key.
+ * @param {string} modelName The user's chosen model name.
  * @returns {Promise<{parsedText: string, structuredOutput: object | null}>}
  */
-export async function processFileWithUserKey(file, prompt, apiKey) {
-  // Use a model that supports file inputs
-  const model = getClient(apiKey, "gemini-1.5-flash-latest");
+export async function processFileWithUserKey(file, prompt, apiKey, modelName) {
+  const model = getClient(apiKey, modelName);
   
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const filePart = {
@@ -64,20 +64,21 @@ export async function processFileWithUserKey(file, prompt, apiKey) {
   const parsedText = structuredOutput?.fullText || aiResponseText;
 
   if (!structuredOutput) {
-      console.warn("Gemini did not return a structured JSON object. The response was:", aiResponseText);
+      console.warn("Gemini did not return a structured JSON object. Response:", aiResponseText);
   }
   
   return { parsedText, structuredOutput };
 }
 
 /**
- * Sends a text-only prompt to the Gemini API using a specific API key.
+ * Sends a text-only prompt to Gemini using a user-specific key and model.
  * @param {string} prompt The complete text prompt.
  * @param {string} apiKey The HR user's Gemini API key.
+ * @param {string} modelName The user's chosen model name.
  * @returns {Promise<{textResponse: string, structuredOutput: object | null}>}
  */
-export async function generateTextWithUserKey(prompt, apiKey) {
-    const model = getClient(apiKey, "gemini-1.5-flash-latest"); // A text model is sufficient and cheaper
+export async function generateTextWithUserKey(prompt, apiKey, modelName) {
+    const model = getClient(apiKey, modelName);
     const result = await model.generateContent(prompt);
     const response = result.response;
     const textResponse = response.text();
@@ -86,15 +87,16 @@ export async function generateTextWithUserKey(prompt, apiKey) {
     return { textResponse, structuredOutput };
 }
 
-
 /**
- * Fetches a file from a public URL and uses Gemini to extract its text content.
+ * Fetches a file from a public URL and uses Gemini to extract its text content,
+ * respecting the user's chosen model.
  * @param {string} url The public URL of the file (e.g., from Vercel Blob).
  * @param {string} apiKey The user-provided Gemini API key.
+ * @param {string} modelName The user's chosen model name.
  * @returns {Promise<string>} The extracted text content as a string.
  */
-export async function extractTextFromUrl(url, apiKey) {
-    const model = getClient(apiKey, "gemini-1.5-flash-latest"); // Use a powerful model for extraction
+export async function extractTextFromUrl(url, apiKey, modelName) {
+    const model = getClient(apiKey, modelName); // Use the provided model name
 
     const response = await fetch(url);
     if (!response.ok) {

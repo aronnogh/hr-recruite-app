@@ -1,6 +1,14 @@
 // models/User.js
 import mongoose from 'mongoose';
 
+// A list of currently supported and recommended models
+const SUPPORTED_GEMINI_MODELS = [
+    'gemini-1.5-pro-latest', // Best for complex reasoning & multimodal (PDFs)
+    'gemini-1.5-flash-latest', // Faster, cheaper, great for text tasks
+    'gemini-pro', // Older but reliable text-only model
+];
+
+
 const UserSchema = new mongoose.Schema({
   name: String,
   email: {
@@ -14,14 +22,22 @@ const UserSchema = new mongoose.Schema({
     default: null,
   },
   image: String,
-  // --- NEW FIELDS for HR Users ---
+  // --- Fields for HR Users ---
   geminiApiKey: {
     type: String,
-    // It's good practice to encrypt this in a real production app
   },
   schedulingLink: {
     type: String,
-    // e.g., https://calendly.com/hr-user
+  },
+  companyName: {
+    type: String,
+    default: 'My Company',
+  },
+  // --- NEW FIELD ---
+  geminiModel: {
+    type: String,
+    enum: SUPPORTED_GEMINI_MODELS,
+    default: 'gemini-1.5-flash-latest', // A sensible, cost-effective default
   },
 }, { timestamps: true });
 

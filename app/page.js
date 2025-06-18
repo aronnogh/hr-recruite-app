@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import Link from "next/link";
 import Image from "next/image"; // Import Next.js Image component for optimization
-import '@material/web/button/filled-button.js';
+// REMOVE THIS LINE: import '@material/web/button/filled-button.js'; // This import is causing the build error in a Server Component
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -51,6 +51,8 @@ export default async function Home() {
             {/* End User Profile Card */}
 
             <Link href="/dashboard" passHref>
+              {/* Ensure this is wrapped in a client component if interactive functionality is needed client-side,
+                  but for just rendering the button, it should work if globally registered. */}
               <md-filled-button className="w-full sm:w-auto md:min-w-[200px] mt-6">
                 Go to Dashboard
               </md-filled-button>
@@ -63,8 +65,8 @@ export default async function Home() {
             </p>
             {/* Optional: Add a sign-in button here if signIn function is accessible */}
             {/* <Link href="/api/auth/signin" passHref>
-              <md-text-button className="mt-4">Sign In</md-text-button>
-            </Link> */}
+               <md-text-button className="mt-4">Sign In</md-text-button>
+             </Link> */}
           </div>
         )}
       </div>

@@ -13,44 +13,57 @@ export async function updateHrSettings(previousState, formData) {
         return { error: 'Unauthorized' };
     }
 
+    // 1. Get all values from the form data.
     const geminiApiKey = formData.get('geminiApiKey');
     const schedulingLink = formData.get('schedulingLink');
     const companyName = formData.get('companyName');
-    const geminiModel = formData.get('geminiModel'); // Get the new model value
+    const geminiModel = formData.get('geminiModel');
 
-    // Basic validation
+    // 2. Perform validation.
     if (!schedulingLink || !schedulingLink.startsWith('https://')) {
         return { error: 'Please provide a valid scheduling link (e.g., from Calendly).' };
     }
     if (!companyName) {
         return { error: 'Company Name is required.' };
     }
+    if (!geminiModel) {
+        return { error: 'AI Model selection is required.'}
+    }
 
     try {
         await dbConnect();
 
-        // Find the user to get their current data
-        const currentUser = await User.findById(session.user.id);
-        if (!currentUser) return { error: 'User not found.' };
+        // 3. Fetch the user document from the database.
+        const userToUpdate = await User.findById(session.user.id);
+        if (!userToUpdate) {
+            return { error: 'User not found.' };
+        }
 
-        // Update the document
-        // If the API key field is empty in the form, don't overwrite an existing key.
-        // The user must explicitly clear it if that's the intention (could be a future feature).
-        currentUser.geminiApiKey = geminiApiKey || currentUser.geminiApiKey;
-        currentUser.schedulingLink = schedulingLink;
-        currentUser.companyName = companyName;
-        currentUser.geminiModel = geminiModel; // Save the selected model
-
-        await currentUser.save();
+        // --- THIS IS THE CRITICAL FIX ---
+        // 4. Update the document fields safely.
+        // This logic ensures that if a user submits an empty string for the API key,
+        // it doesn't overwrite a previously saved key. They must explicitly clear it.
+        // For other fields, we update them directly.
+        userToUpdate.companyName = companyName;
+        userToUpdate.schedulingLink = schedulingLink;
+        userToUpdate.geminiModel = geminiModel;
         
+        // Only update the API key if a new, non-empty value was provided.
+        if (geminiApiKey) {
+            userToUpdate.geminiApiKey = geminiApiKey;
+        }
+
+        // 5. Save the updated document.
+        await userToUpdate.save();
+        // --- END OF FIX ---
+
         revalidatePath('/hr/settings');
         return { success: true, message: 'Settings updated successfully!' };
     } catch (e) {
         console.error("Settings update error:", e);
-        // Handle potential validation errors from the schema enum
         if (e.name === 'ValidationError') {
-            return { error: 'Invalid AI model selected.' };
+            return { error: 'Invalid data provided. Please check your inputs.' };
         }
-        return { error: 'Failed to update settings.' };
+        return { error: 'Failed to update settings due to a server error.' };
     }
 }

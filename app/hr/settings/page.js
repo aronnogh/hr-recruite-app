@@ -4,13 +4,19 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
-import HrSettingsForm from "@/components/hr/hrSettingsForm"; // <-- Import the new client component
+// --- THIS IS THE LINE TO VERIFY ---
+// This assumes your file is located at: components/hr/HrSettingsForm.js
+// import HrSettingsForm from "@/components/hr/HrSettingsForm";
+import HrSettingsForm from "@/components/hr/hrSettingsForm";
 
 // This async function fetches the data on the server
 async function getUserSettings(userId) {
     await dbConnect();
-    // Fetch only the fields needed to avoid leaking sensitive data
-    const user = await User.findById(userId).select('geminiApiKey schedulingLink').lean();
+
+    const user = await User.findById(userId)
+        .select('companyName geminiApiKey geminiModel schedulingLink')
+        .lean(); 
+    
     return user;
 }
 
@@ -20,12 +26,12 @@ export default async function SettingsPage() {
 
     // Protect the route
     if (!session || session.user.role !== 'hr') {
-        redirect('/api/auth/signin');
+        redirect('/api/auth/signin?callbackUrl=/hr/settings');
     }
 
     // Fetch the settings on the server
     const settings = await getUserSettings(session.user.id);
     
-    // Render the Client Component and pass the fetched data as a prop
+    // Pass the clean, serializable object to the client component
     return <HrSettingsForm userSettings={JSON.parse(JSON.stringify(settings))} />;
 }

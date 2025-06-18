@@ -43,6 +43,9 @@ html {
   --md-sys-color-surface-container-lowest: #FFFFFF;
   --md-sys-color-surface-bright: #FFFBFF;
   --md-sys-color-surface-dim: #DED8E1;
+
+  --selection-background: #735eab;
+  --selection-color: #1C1B1F;
 }
 
 html.dark {
@@ -83,10 +86,19 @@ html.dark {
   --md-sys-color-surface-container-lowest: #141318;
   --md-sys-color-surface-bright: #3B383E;
   --md-sys-color-surface-dim: #1C1B1F;
+
+  --selection-background: #c4aff4;
+  --selection-color: #1C1B1F;
 }
 
+
 /* Apply Material You colors using Tailwind CSS custom properties */
-body {
+::selection{
+  background-color: var(--selection-background);
+  color: var(--selection-color);
+}
+
+*, body {
   font-family: 'Montserrat', sans-serif;
 }
 
